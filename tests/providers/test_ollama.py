@@ -65,6 +65,21 @@ def test_init_normalizes_openai_base_url(configured: str, expected: str) -> None
     assert openai_client.call_args.kwargs["base_url"] == expected
 
 
+def test_local_provider_does_not_inherit_system_proxy() -> None:
+    with (
+        patch(
+            "free_claude_code.providers.openai_chat.provider.AsyncOpenAI"
+        ) as openai_client,
+        patch(
+            "free_claude_code.providers.openai_chat.provider.httpx.AsyncClient"
+        ) as http_client,
+    ):
+        _provider()
+
+    assert http_client.call_args.kwargs["trust_env"] is False
+    assert openai_client.call_args.kwargs["http_client"] is http_client.return_value
+
+
 def test_cloud_init_uses_fixed_openai_endpoint_and_api_key() -> None:
     with patch(
         "free_claude_code.providers.openai_chat.provider.AsyncOpenAI"

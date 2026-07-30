@@ -108,7 +108,7 @@ printf '%s\n' "$FCC_PS_OUTPUT"
         awk = shutil.which("awk", path=self.env["PATH"])
         if awk is None:
             pytest.skip("awk is required for the POSIX process fallback scenario")
-        shutil.copy2(awk, fallback_bin / "awk")
+        (fallback_bin / "awk").symlink_to(awk)
         self.env["FCC_PS_OUTPUT"] = process_line
         self.env["PATH"] = str(fallback_bin)
 
@@ -132,6 +132,7 @@ def posix_uninstall_harness(tmp_path: Path) -> PosixUninstallHarness:
     _write_executable(bin_dir / "claude", "#!/bin/sh\nexit 0\n")
     _write_executable(bin_dir / "codex", "#!/bin/sh\nexit 0\n")
     _write_executable(bin_dir / "pi", "#!/bin/sh\nexit 0\n")
+    _write_executable(bin_dir / "pgrep", "#!/bin/sh\nexit 1\n")
     _write_executable(
         bin_dir / "uv",
         """#!/bin/sh

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Remote FCC"
+  short_description: "Connect Claude Code to a remote FCC host securely"
+  default_prompt: "Use $fcc-remote to detect and connect to my remote Free Claude Code host."

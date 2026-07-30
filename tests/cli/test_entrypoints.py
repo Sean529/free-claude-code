@@ -448,6 +448,22 @@ def test_launch_claude_passes_args_and_child_env(
     monkeypatch.setenv("KEEP_ME", "yes")
     monkeypatch.delenv("DISABLE_TELEMETRY", raising=False)
     settings = _launcher_settings(port=9191, token="proxy-token")
+    captured_command: list[str] | None = None
+    captured_settings: object = None
+    captured_settings_mode: int | None = None
+    captured_env: dict[str, str] | None = None
+    process = MagicMock(pid=12345)
+    process.wait.return_value = 7
+
+    def fake_popen(command: list[str], *, env: dict[str, str]) -> MagicMock:
+        nonlocal captured_command, captured_settings
+        nonlocal captured_settings_mode, captured_env
+        settings_path = Path(command[2])
+        captured_command = command
+        captured_settings = json.loads(settings_path.read_text("utf-8"))
+        captured_settings_mode = settings_path.stat().st_mode & 0o777
+        captured_env = env
+        return process
 
     with (
         patch(
@@ -460,20 +476,36 @@ def test_launch_claude_passes_args_and_child_env(
             "free_claude_code.cli.launchers.common.shutil.which",
             return_value="resolved-claude.cmd",
         ),
-        patch("free_claude_code.cli.launchers.common.subprocess.Popen") as popen,
+        patch(
+            "free_claude_code.cli.launchers.common.subprocess.Popen",
+            side_effect=fake_popen,
+        ) as popen,
         patch("free_claude_code.cli.launchers.common.register_pid") as register_pid,
         patch("free_claude_code.cli.launchers.common.unregister_pid") as unregister_pid,
         pytest.raises(SystemExit) as exc_info,
     ):
-        process = popen.return_value
-        process.pid = 12345
-        process.wait.return_value = 7
         launch(["--model", "sonnet"])
 
     assert exc_info.value.code == 7
     popen.assert_called_once()
-    assert popen.call_args.args[0] == ["resolved-claude.cmd", "--model", "sonnet"]
-    child_env = popen.call_args.kwargs["env"]
+    command = captured_command
+    assert command is not None
+    assert command[0] == "resolved-claude.cmd"
+    assert command[1] == "--settings"
+    settings_path = Path(command[2])
+    assert command[3:] == ["--model", "sonnet"]
+    assert not settings_path.exists()
+    assert captured_settings_mode == 0o600
+    assert captured_settings == {
+        "env": {
+            "ANTHROPIC_AUTH_TOKEN": "proxy-token",
+            "ANTHROPIC_BASE_URL": "http://127.0.0.1:9191",
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "190000",
+            "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+        }
+    }
+    child_env = captured_env
+    assert child_env is not None
     assert child_env["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:9191"
     assert child_env["ANTHROPIC_AUTH_TOKEN"] == "proxy-token"
     assert child_env["CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY"] == "1"

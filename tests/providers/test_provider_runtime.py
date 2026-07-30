@@ -321,7 +321,7 @@ def test_create_cloudflare_provider_uses_account_scoped_base_url():
 
 
 def test_opencode_go_provider_config_uses_correct_base_url_and_name():
-    with patch("httpx.AsyncClient"):
+    with patch("free_claude_code.providers.openai_chat.provider.AsyncOpenAI"):
         provider = create_provider("opencode_go", _make_settings())
 
     assert isinstance(provider, OpenAIChatProvider)

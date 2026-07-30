@@ -35,3 +35,18 @@ def build_claude_proxy_env(
     env["DISABLE_FEEDBACK_COMMAND"] = "1"
     env["DISABLE_ERROR_REPORTING"] = "1"
     return env
+
+
+def build_claude_proxy_settings(
+    *, proxy_root_url: str, auth_token: str
+) -> dict[str, dict[str, str]]:
+    """Return settings that override conflicting Claude user-level proxy env."""
+
+    return {
+        "env": {
+            "ANTHROPIC_AUTH_TOKEN": proxy_auth_token(auth_token),
+            "ANTHROPIC_BASE_URL": proxy_root_url,
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW": CLAUDE_CODE_AUTO_COMPACT_WINDOW,
+            "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+        }
+    }
